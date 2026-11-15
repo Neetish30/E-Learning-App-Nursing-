@@ -601,17 +601,18 @@ async function startSession(session, ev) {
   if (ev === "SIGNED_IN") location.hash = isAdmin() ? "#/admin" : "#/home";
   route();
 }
-function boot() {
+async function boot() {
   if (!configured) return viewAuth();
+  // Watchdog: if we're still on the spinner after 12s, show a helpful screen instead of hanging.
+  setTimeout(() => { if (document.querySelector(".boot")) viewError("Loading is taking too long. Check your internet connection, then tap Try again."); }, 12000);
+  try {
+    const { data } = await sb.auth.getSession();           // read the saved login directly (no callback = no deadlock)
+    if (data.session) await startSession(data.session, "INITIAL"); else viewAuth();
+  } catch (e) { console.error(e); viewError(e.message || String(e)); }
   sb.auth.onAuthStateChange((ev, session) => {
-    if (ev === "TOKEN_REFRESHED" || ev === "USER_UPDATED") return;
-    // IMPORTANT: never await Supabase calls inside this callback (deadlocks) — defer them.
-    setTimeout(() => {
-      if (session) {
-        if (S.user?.id === session.user.id && ev !== "SIGNED_IN") return;
-        startSession(session, ev);
-      } else { S.user = S.me = null; location.hash = ""; S.authMode = "login"; viewAuth(); }
-    }, 0);
+    // never await Supabase calls inside this callback — defer them
+    if (ev === "SIGNED_IN" && session && S.user?.id !== session.user.id) setTimeout(() => startSession(session, "SIGNED_IN"), 0);
+    else if (ev === "SIGNED_OUT") setTimeout(() => { S.user = S.me = null; location.hash = ""; S.authMode = "login"; viewAuth(); }, 0);
   });
 }
 boot();
