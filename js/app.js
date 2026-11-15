@@ -587,18 +587,31 @@ function route() {
 }
 window.addEventListener("hashchange", route);
 
-async function boot() {
+function viewError(msg) {
+  $app.innerHTML = `<div class="auth"><div class="brand"><div class="logo">${icon("cap", 28)}</div><div><b>${esc(cfg.APP_NAME)}</b></div></div>
+    <h1>Something went wrong</h1><div class="err" style="margin-top:14px">${esc(msg)}</div>
+    <button class="btn block" id="reload">Try again</button><p class="switch"><button id="lo">Log out</button></p></div>`;
+  document.getElementById("reload").onclick = () => location.reload();
+  document.getElementById("lo").onclick = () => sb.auth.signOut().then(() => location.reload());
+}
+async function startSession(session, ev) {
+  S.user = session.user;
+  try { await loadAll(); } catch (e) { console.error(e); return viewError("Could not load your data: " + (e.message || e) + ". Check that supabase/schema.sql ran without errors."); }
+  if (!S.me) return viewError("Your profile was not found. Make sure supabase/schema.sql was run, then sign up again.");
+  if (ev === "SIGNED_IN") location.hash = isAdmin() ? "#/admin" : "#/home";
+  route();
+}
+function boot() {
   if (!configured) return viewAuth();
-  sb.auth.onAuthStateChange(async (ev, session) => {
-    if (ev === "TOKEN_REFRESHED") return;
-    if (session) {
-      if (S.user?.id === session.user.id && ev !== "SIGNED_IN") return;
-      S.user = session.user;
-      try { await loadAll(); } catch (e) { fail(e); }
-      if (!S.me) { toast("Profile not found. Did you run schema.sql?"); }
-      if (ev === "SIGNED_IN") location.hash = isAdmin() ? "#/admin" : "#/home";
-      route();
-    } else { S.user = S.me = null; location.hash = ""; S.authMode = "login"; viewAuth(); }
+  sb.auth.onAuthStateChange((ev, session) => {
+    if (ev === "TOKEN_REFRESHED" || ev === "USER_UPDATED") return;
+    // IMPORTANT: never await Supabase calls inside this callback (deadlocks) — defer them.
+    setTimeout(() => {
+      if (session) {
+        if (S.user?.id === session.user.id && ev !== "SIGNED_IN") return;
+        startSession(session, ev);
+      } else { S.user = S.me = null; location.hash = ""; S.authMode = "login"; viewAuth(); }
+    }, 0);
   });
 }
 boot();
