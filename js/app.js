@@ -175,8 +175,9 @@ function viewAuth() {
     try {
       if (signup) {
         const username = f.username.toLowerCase();
-        const { data: free } = await sb.rpc("username_available", { u: username });
-        if (!free) throw new Error("That username is taken. Try another.");
+        const { data: free, error: ue } = await sb.rpc("username_available", { u: username });
+        if (ue) throw new Error("Database not ready: " + ue.message + " (Run supabase/schema.sql and check js/config.js)");
+        if (free === false) throw new Error("That username is taken. Try another.");
         const { data, error } = await sb.auth.signUp({ email: f.email.trim(), password: f.password, options: { data: { username, full_name: f.name.trim() } } });
         if (error) throw error;
         if (!data.session) throw new Error("Account created, but email confirmation is still ON in Supabase. Ask your admin to turn it off (see README), then log in.");
@@ -184,7 +185,8 @@ function viewAuth() {
       } else {
         let email = f.id.trim();
         if (!email.includes("@")) {
-          const { data } = await sb.rpc("email_for_username", { u: email });
+          const { data, error: le } = await sb.rpc("email_for_username", { u: email });
+          if (le) throw new Error("Database not ready: " + le.message);
           if (!data) throw new Error("No account found with that username.");
           email = data;
         }
