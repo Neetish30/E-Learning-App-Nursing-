@@ -4,6 +4,6 @@
 window.APP_CONFIG = {
   APP_NAME: "NurseEd",
   TAGLINE: "Learn. Practice. Care.",
-  SUPABASE_URL: "https://YOUR-PROJECT-ID.supabase.co",
-  SUPABASE_ANON_KEY: "YOUR-ANON-PUBLIC-KEY",
+  SUPABASE_URL: "https://dnvbmjbmncljywxnqwcl.supabase.co",
+  SUPABASE_ANON_KEY: "sb_publishable_Ic0PCcHgGfz30EEyaDrSsw_OJD40emV",
 };
