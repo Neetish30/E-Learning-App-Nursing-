@@ -305,7 +305,7 @@ function drawFlash(cards) {
   const box = document.getElementById("fc"); if (!cards.length) { box.innerHTML = empty("🗂️", "No cards yet."); return; }
   const c = cards[flashIdx];
   box.innerHTML = `<div class="meta" style="text-align:center;margin-bottom:8px">Card ${flashIdx + 1} of ${cards.length} · tap to flip</div>
-    <div class="flash" id="flash" tabindex="0" role="button" aria-label="Flip card"><div><div class="face front"><small>QUESTION</small>${esc(c.q)}</div><div class="face back"><small>ANSWER</small>${esc(c.a)}</div></div></div>
+    <div class="flash" id="flash" tabindex="0" role="button" aria-label="Flip card"><div><div class="face face-front"><small>QUESTION</small>${esc(c.q)}</div><div class="face face-back"><small>ANSWER</small>${esc(c.a)}</div></div></div>
     <div class="row" style="margin-top:14px"><button class="btn ghost grow" id="fp" ${flashIdx === 0 ? "disabled" : ""}>Previous</button><button class="btn grow" id="fn" ${flashIdx === cards.length - 1 ? "disabled" : ""}>Next card</button></div>`;
   const f = document.getElementById("flash"), flip = () => f.classList.toggle("flip");
   f.onclick = flip; f.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); flip(); } };
