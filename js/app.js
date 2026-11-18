@@ -365,7 +365,7 @@ function drawQuiz() {
   }
   const q = z.qs[z.i], sel = z.ans[q.id], last = z.i === z.qs.length - 1;
   shell(`${top(esc(a.title), { back: "#/assess", sub: `Question ${z.i + 1} of ${z.qs.length}` })}${bar(Math.round(z.i * 100 / z.qs.length))}
-    <div class="card" style="margin-top:14px"><h2 style="font-size:18px">${esc(q.prompt)}</h2>
+    <div class="card" style="margin-top:14px"><h2 style="font-size:15.5px">${esc(q.prompt)}</h2>
     ${q.options.map((o, k) => `<button class="opt ${sel === k ? "sel" : ""}" data-k="${k}" aria-pressed="${sel === k}"><span class="dot">${"ABCD"[k]}</span>${esc(o)}</button>`).join("")}</div>
     <div class="row" style="margin-top:18px">${z.i ? `<button class="btn ghost" id="qp">${icon("back", 18)}</button>` : ""}<button class="btn grow" id="qn" ${sel == null ? "disabled" : ""}>${last ? "Submit" : "Next"}</button></div>`, { nav: false });
   document.querySelectorAll("[data-k]").forEach(b => b.onclick = () => { z.ans[q.id] = +b.dataset.k; drawQuiz(); });
@@ -386,7 +386,7 @@ function viewProfile() {
     [S.attempts.some(a => a.user_id === m.id && a.passed), "🏅", "Passed a test"]];
   shell(`${top("Profile")}
     <div class="card"><div class="row"><div class="tile" style="width:64px;height:64px;border-radius:50%;font-weight:800;color:var(--p-dark);font-size:22px">${esc(initials(m.full_name))}</div>
-      <div class="grow"><b style="font-size:18px">${esc(m.full_name)}</b><div class="meta">@${esc(m.username)}</div><div class="meta ellipsis">${esc(m.email)}</div></div></div></div>
+      <div class="grow"><b style="font-size:16px">${esc(m.full_name)}</b><div class="meta">@${esc(m.username)}</div><div class="meta trunc">${esc(m.email)}</div></div></div></div>
     <div class="stats" style="margin-top:12px"><div class="stat"><b>${st.courses}</b><small>Courses</small></div><div class="stat"><b>${st.lessons}</b><small>Lessons</small></div><div class="stat"><b>${st.streak}</b><small>Streak</small></div></div>
     <div class="sec"><h2>Achievements</h2></div>
     <div class="stats" style="grid-template-columns:repeat(4,1fr)">${ach.map(a => `<div class="stat" style="${a[0] ? "" : "opacity:.4;filter:grayscale(1)"}"><b>${a[1]}</b><small>${a[2]}</small></div>`).join("")}</div>
