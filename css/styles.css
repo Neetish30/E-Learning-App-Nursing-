@@ -99,7 +99,7 @@ h1,h2,h3{line-height:1.2}
 .field{display:block;margin-bottom:12px}
 .field>span{display:block;font-weight:600;font-size:13px;margin-bottom:5px}
 .field small{display:block;color:var(--mut);font-size:12px;margin-top:4px}
-input[type=text],input[type=password],input[type=email],input[type=number],input[type=url],select,textarea{width:100%;background:#fff;border:1.5px solid var(--line);border-radius:13px;padding:12px 13px;outline:none}
+input[type=text],input[type=password],input[type=email],input[type=number],input[type=url],input[type=date],select,textarea{width:100%;background:#fff;border:1.5px solid var(--line);border-radius:13px;padding:12px 13px;outline:none}
 input:focus,select:focus,textarea:focus{border-color:var(--p);box-shadow:0 0 0 3px #E3DBFF}
 textarea{min-height:90px;resize:vertical}
 .search{position:relative}

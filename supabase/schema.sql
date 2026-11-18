@@ -22,6 +22,8 @@ create table if not exists courses (
   description text not null default '',
   category    text not null default 'General',
   emoji       text not null default '📘',
+  daily_goal  int not null default 3 check (daily_goal between 0 and 50),
+  target_date date,
   published   boolean not null default true,
   created_at  timestamptz not null default now()
 );
@@ -230,7 +232,7 @@ create policy "enroll delete" on enrollments for delete to authenticated using (
 
 create policy "progress read" on lesson_progress for select to authenticated using (user_id = auth.uid() or is_admin());
 create policy "progress insert" on lesson_progress for insert to authenticated with check (user_id = auth.uid());
-create policy "progress delete" on lesson_progress for delete to authenticated using (user_id = auth.uid());
+-- (no delete policy: completed lessons cannot be un-completed)
 
 create policy "attempts read" on attempts for select to authenticated using (user_id = auth.uid() or is_admin());
 -- attempts are inserted only by submit_attempt()

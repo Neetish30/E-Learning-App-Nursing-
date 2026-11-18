@@ -205,7 +205,7 @@ function viewHome() {
   const week = [...Array(7)].map((_, i) => { const d = new Date(); d.setDate(d.getDate() - (6 - i)); const k = dayKey(d);
     return { l: d.toLocaleDateString(undefined, { weekday: "short" }).slice(0, 2), n: S.progress.filter(p => p.user_id === uid && dayKey(p.completed_at) === k).length }; });
   const max = Math.max(3, ...week.map(w => w.n));
-  const today = week[6].n, goal = 3;
+  const goals = mine.map(c => goalInfo(uid, c)).filter(g => g.goal > 0);
   const todo = nextAssessment(uid);
   shell(`
     ${top(`Hello, ${esc((S.me.full_name || S.me.username).split(" ")[0])}! 👋`, { sub: "What do you want to learn today?", right: `<span class="pill" title="Day streak">${icon("flame", 18)} ${st.streak}</span>` })}
@@ -215,12 +215,23 @@ function viewHome() {
     : `<div class="hero"><div class="lbl">Get started</div><div class="big">${mine.length ? "You've finished every lesson! 🎉" : "Pick your first course"}</div><a class="btn white sm" href="#/courses">Browse courses ${icon("chev", 16)}</a><div class="emoji">🩺</div></div>`}
     <div class="sec"><h2>My Courses</h2><a href="#/courses">View All</a></div>
     <div class="stack">${mine.length ? mine.slice(0, 4).map(c => courseRow(c, uid)).join("") : empty("📚", "You haven't enrolled in any course yet.<br><a href='#/courses'>Find a course</a>")}</div>
-    <div class="sec"><h2>Today's Goal</h2><span class="meta">${Math.min(today, goal)} / ${goal} lessons</span></div>
-    <div class="card"><div class="row"><div class="tile sm t0">🎯</div><div class="grow"><b>Complete ${goal} lessons today</b>${bar(Math.min(100, Math.round(today * 100 / goal)))}</div>${today >= goal ? "🎁" : ""}</div></div>
+    <div class="sec"><h2>Today's Goals</h2><span class="meta">${goals.filter(g => g.met).length} / ${goals.length} done</span></div>
+    <div class="stack">${goals.length ? goals.map(goalRow).join("") : `<div class="card meta">${mine.length ? "No daily goal set for your courses." : "Enroll in a course to get daily goals."}</div>`}</div>
     ${todo ? `<div class="sec"><h2>Next Assessment</h2><a href="#/assess">All tests</a></div>${assessRow(todo, uid)}` : ""}
     <div class="sec"><h2>Your Progress</h2></div>
     <div class="stats"><div class="stat"><b>${st.lessons}</b><small>Lessons</small></div><div class="stat"><b>${st.courses}</b><small>Courses</small></div><div class="stat"><b>${st.avg ?? "–"}${st.avg != null ? "%" : ""}</b><small>Avg score</small></div></div>
     <div class="card" style="margin-top:10px"><b>This week</b><div class="week">${week.map(w => `<div><i class="${w.n ? "" : "zero"}" style="height:${w.n ? Math.max(12, w.n / max * 100) : 4}%"></i>${w.l}</div>`).join("")}</div></div>`);
+}
+function goalInfo(uid, c) {
+  const p = cprog(uid, c.id), k = dayKey(new Date());
+  const doneToday = S.progress.filter(x => x.user_id === uid && x.course_id === c.id && dayKey(x.completed_at) === k).length;
+  const goal = Math.min(c.daily_goal ?? 3, doneToday + (p.total - p.done));   // can't ask for more lessons than remain
+  const days = c.target_date ? Math.ceil((new Date(c.target_date + "T23:59:59") - new Date()) / 864e5) : null;
+  return { c, goal, doneToday, met: doneToday >= goal, finished: p.total > 0 && p.done === p.total, days };
+}
+function goalRow(g) {
+  const due = g.finished ? `<span class="chip green">Course complete</span>` : g.days == null ? "" : g.days < 0 ? `<span class="chip red">Past due date</span>` : `<span class="chip ${g.days <= 3 ? "yellow" : ""}">${g.days === 0 ? "Due today" : g.days + " days left"}</span>`;
+  return `<a class="item" href="#/course/${g.c.id}"><div class="tile sm t0">🎯</div><div class="grow"><b class="ellipsis">${esc(g.c.title)}</b><small>${g.goal ? `Complete ${g.goal} lesson${g.goal > 1 ? "s" : ""} today · ${Math.min(g.doneToday, g.goal)}/${g.goal}` : "Nothing left to do today 🎉"}</small>${bar(g.goal ? Math.min(100, Math.round(g.doneToday * 100 / g.goal)) : 100)}</div>${g.met && g.goal ? "🎁" : due}</a>`;
 }
 function courseRow(c, uid) {
   const p = cprog(uid, c.id);
@@ -254,6 +265,7 @@ function viewCourse(id) {
   shell(`${top("Course", { back: "#/courses" })}
     <div class="hero"><div class="lbl">${esc(c.category)}</div><div class="big">${esc(c.title)}</div><div class="lbl">${modsOf(id).length} modules · ${ls.length} lessons · ~${mins} min</div>${en ? bar(p.pct) : ""}<div class="emoji">${esc(c.emoji)}</div></div>
     <p style="margin:16px 2px">${esc(c.description)}</p>
+    ${c.daily_goal || c.target_date ? `<div class="card row" style="margin-bottom:14px"><div class="tile sm t0">🎯</div><div class="grow"><b>Course goal</b><div class="meta">${c.daily_goal ? `${c.daily_goal} lesson${c.daily_goal > 1 ? "s" : ""} per day` : ""}${c.daily_goal && c.target_date ? " · " : ""}${c.target_date ? `finish by ${fmtDate(c.target_date + "T00:00:00")}` : ""}</div></div></div>` : ""}
     ${!ls.length ? empty("🚧", "Lessons are coming soon.") : en
       ? `<a class="btn block" href="#/learn/${(nx || ls[0]).id}">${p.done === 0 ? "Start course" : nx ? "Continue course" : "Review course"} ${icon("chev", 18)}</a>`
       : `<button class="btn block" data-enroll="${id}">Enroll &amp; start course</button>`}
@@ -288,18 +300,18 @@ function viewLesson(id) {
     ${bar(Math.round((i + 1) * 100 / ls.length))}<div style="margin-top:14px">${body}</div>
     <div class="row" style="margin-top:18px">
       ${i > 0 ? `<a class="btn ghost" href="#/learn/${ls[i - 1].id}" aria-label="Previous lesson">${icon("back", 18)}</a>` : ""}
-      <button class="btn grow ${done ? "ghost" : ""}" id="done">${done ? `${icon("check", 18)} Completed` : "Mark as complete"}</button>
+      ${done ? `<div class="btn grow ghost" style="pointer-events:none" aria-live="polite">${icon("check", 18)} Completed</div>` : `<button class="btn grow" id="done">Mark as complete</button>`}
       ${nx ? `<a class="btn ghost" href="#/learn/${nx.id}" aria-label="Next lesson">${icon("chev", 18)}</a>` : ""}
     </div>`, { nav: false });
   if (l.type === "flashcards") drawFlash(l.cards || []);
-  document.getElementById("done").onclick = async () => {
-    if (done) { await sb.from("lesson_progress").delete().match({ user_id: uid, lesson_id: id }); S.progress = S.progress.filter(p => !(p.user_id === uid && p.lesson_id === id)); return viewLesson(id); }
+  document.getElementById("done")?.addEventListener("click", async () => {
+    document.getElementById("done").disabled = true;
     const row = { user_id: uid, lesson_id: id, course_id: c.id };
     const { data, error } = await sb.from("lesson_progress").upsert(row).select().single(); if (error) return fail(error);
     S.progress.push(data || { ...row, completed_at: new Date().toISOString() });
     if (nx) { toast("Lesson complete ✅"); go("#/learn/" + nx.id); }
     else { toast("Course complete! 🎉"); go("#/course/" + c.id); }
-  };
+  });
 }
 function drawFlash(cards) {
   const box = document.getElementById("fc"); if (!cards.length) { box.innerHTML = empty("🗂️", "No cards yet."); return; }
@@ -447,16 +459,17 @@ function courseForm(c) {
     field("Title", `<input type="text" name="title" required value="${esc(c?.title)}">`) +
     field("Description", `<textarea name="description">${esc(c?.description)}</textarea>`) +
     `<div class="row">${field("Category", `<input type="text" name="category" value="${esc(c?.category || "General")}">`, "", "grow")}${field("Emoji", `<input type="text" name="emoji" maxlength="4" value="${esc(c?.emoji || "📘")}" style="width:80px">`)}</div>` +
+    `<div class="row">${field("Daily goal (lessons per day)", `<input type="number" name="goal" min="0" max="50" value="${c?.daily_goal ?? 3}">`, "0 = no daily goal", "grow")}${field("Finish by (optional)", `<input type="date" name="target" value="${esc(c?.target_date || "")}">`, "Deadline shown to students", "grow")}</div>` +
     `<label class="checkrow field"><input type="checkbox" name="published" ${!c || c.published ? "checked" : ""}> Visible to students</label>`,
     async fd => {
-      const row = { title: fd.get("title").trim(), description: fd.get("description").trim(), category: fd.get("category").trim() || "General", emoji: fd.get("emoji").trim() || "📘", published: fd.get("published") === "on" };
+      const row = { title: fd.get("title").trim(), description: fd.get("description").trim(), category: fd.get("category").trim() || "General", emoji: fd.get("emoji").trim() || "📘", published: fd.get("published") === "on", daily_goal: Math.max(0, Math.min(50, parseInt(fd.get("goal"), 10) || 0)), target_date: fd.get("target") || null };
       const { data, error } = c ? await sb.from("courses").update(row).eq("id", c.id).select().single() : await sb.from("courses").insert(row).select().single();
       if (error) throw error; await loadAll(); go("#/admin/course/" + data.id); route();
     });
 }
 function viewAdminCourse(id) {
   const c = S.courses.find(x => x.id === id); if (!c) return go("#/admin/courses");
-  shell(`${top(esc(c.title), { back: "#/admin/courses", sub: c.published ? "Published" : "Draft" })}
+  shell(`${top(esc(c.title), { back: "#/admin/courses", sub: `${c.published ? "Published" : "Draft"} · goal: ${c.daily_goal ?? 3}/day${c.target_date ? " · by " + c.target_date : ""}` })}
     <div class="row" style="flex-wrap:wrap"><button class="btn ghost sm" id="ec">${icon("edit", 14)} Edit details</button><button class="btn ghost sm" id="am">${icon("plus", 14)} Add module</button><button class="btn danger sm" id="dc">${icon("trash", 14)} Delete course</button></div>
     <div class="stack" style="margin-top:14px">${modsOf(id).map(m => `<div class="card"><div class="row between"><b>${esc(m.title)}</b><div class="row" style="gap:6px"><button class="icon-btn" data-rm="${m.id}" aria-label="Rename module">${icon("edit", 16)}</button><button class="icon-btn danger" data-dm="${m.id}" aria-label="Delete module">${icon("trash", 16)}</button></div></div>
       <div class="stack" style="margin-top:10px">${lessonsOfMod(m.id).map(l => `<div class="item" style="box-shadow:none"><div class="tile sm t0">${icon((TYPE[l.type] || TYPE.text)[0], 18)}</div><div class="grow"><b class="ellipsis">${esc(l.title)}</b><small>${(TYPE[l.type] || TYPE.text)[1]} · ${l.minutes} min</small></div><button class="icon-btn" data-el="${l.id}" aria-label="Edit lesson">${icon("edit", 16)}</button><button class="icon-btn danger" data-dl="${l.id}" aria-label="Delete lesson">${icon("trash", 16)}</button></div>`).join("")}
